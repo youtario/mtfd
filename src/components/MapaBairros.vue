@@ -1,7 +1,7 @@
 <template>
   <div class="app-layout">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ 'sidebar-hidden': sidebarEscondida }">
       <div class="sidebar-content">
         <!-- Título -->
         <h1 class="sidebar-title">Mapa de Pontos de Doação</h1>
@@ -81,11 +81,55 @@
             </label>
           </div>
         </div>
+
+        <!-- Botão Toggle Sidebar -->
+        <div class="sidebar-footer">
+          <button
+            class="sidebar-toggle"
+            @click="toggleSidebar"
+            :title="'Esconder filtros'"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            <span class="toggle-text">Esconder Filtros</span>
+          </button>
+        </div>
       </div>
     </aside>
 
+    <!-- Botão de Mostrar (quando sidebar está escondida) -->
+    <button
+      v-if="sidebarEscondida"
+      class="sidebar-show-button"
+      @click="toggleSidebar"
+      title="Mostrar filtros"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="m9 18 6-6-6-6"/>
+      </svg>
+    </button>
+
     <!-- Map Area -->
-    <main class="map-area">
+    <main class="map-area" :class="{ 'map-expanded': sidebarEscondida }">
       <!-- Search Bar -->
       <div class="search-wrapper">
         <div class="search-container">
@@ -166,6 +210,9 @@ const zoom = ref(12)
 const center = ref([-26.3044, -48.8487])
 const termoPesquisa = ref('')
 
+// Estado para controlar se a sidebar está escondida
+const sidebarEscondida = ref(false)
+
 const filtros = ref({
   roupas: false,
   alimentos: false,
@@ -182,6 +229,11 @@ const filtros = ref({
 
 // Estado para controlar animações
 const pontosAnimando = ref(new Set())
+
+// Função para toggle da sidebar
+const toggleSidebar = () => {
+  sidebarEscondida.value = !sidebarEscondida.value
+}
 
 const pontosDoacao = ref([
   // ONGs para Crianças
@@ -657,6 +709,7 @@ body {
   display: flex;
   height: 100vh;
   width: 100vw;
+  position: relative;
 }
 
 .sidebar {
@@ -666,6 +719,13 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 4px rgba(0,0,0,0.02);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 100;
+}
+
+.sidebar-hidden {
+  transform: translateX(-100%);
 }
 
 .sidebar-content {
@@ -680,6 +740,75 @@ body {
   color: #1a202c;
   margin-bottom: 32px;
   line-height: 1.3;
+}
+
+/* Botão Toggle dentro da Sidebar */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.sidebar-toggle {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sidebar-toggle:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  color: #2d3748;
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.98);
+}
+
+.toggle-text {
+  user-select: none;
+}
+
+/* Botão de Mostrar (quando sidebar está escondida) */
+.sidebar-show-button {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1001;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: #4a5568;
+}
+
+.sidebar-show-button:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: #2d3748;
+}
+
+.sidebar-show-button:active {
+  transform: scale(0.95);
 }
 
 .filter-group {
@@ -789,6 +918,11 @@ body {
   flex: 1;
   position: relative;
   background: #f8fafc;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-expanded {
+  margin-left: -320px;
 }
 
 .search-wrapper {
@@ -989,20 +1123,55 @@ body {
   display: none !important;
 }
 
-@media (max-width: 768px) {
-  .app-layout {
-    flex-direction: column;
-  }
+  @media (max-width: 768px) {
+    .app-layout {
+      flex-direction: column;
+    }
 
-  .sidebar {
-    width: 100%;
-    height: auto;
-    max-height: 50vh;
-    overflow-y: auto;
-  }
+    .sidebar {
+      width: 100%;
+      height: auto;
+      max-height: 50vh;
+      overflow-y: auto;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 200;
+    }
 
-  .map-container {
-    height: 50vh;
+    .sidebar-hidden {
+      transform: translateY(-100%);
+    }
+
+    .sidebar-show-button {
+      top: 10px;
+      left: 10px;
+    }
+
+    .map-area {
+      margin-top: 0;
+    }
+
+    .map-expanded {
+      margin-left: 0;
+      margin-top: 0;
+    }
+
+    .map-container {
+      height: 100vh;
+    }
+
+    .search-wrapper {
+      top: 70px;
+      right: 10px;
+    }
+
+    .search-container {
+      min-width: 200px;
+    }
+
+    .sidebar-toggle .toggle-text {
+      display: none;
+    }
   }
-}
 </style>
