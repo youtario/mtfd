@@ -1,3 +1,4 @@
+
 <template>
   <div class="app-layout">
     <!-- Sidebar -->
@@ -11,22 +12,22 @@
           <h3 class="filter-label">Tipo de Doação</h3>
           <div class="checkbox-list">
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.roupas">
+              <input type="checkbox" v-model="filtros.roupas" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">Roupas</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.alimentos">
+              <input type="checkbox" v-model="filtros.alimentos" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">Alimentos</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.brinquedos">
+              <input type="checkbox" v-model="filtros.brinquedos" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">Brinquedos</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.livros">
+              <input type="checkbox" v-model="filtros.livros" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">Livros</span>
             </label>
@@ -38,17 +39,17 @@
           <h3 class="filter-label">CATEGORIAS</h3>
           <div class="checkbox-list">
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.criancas">
+              <input type="checkbox" v-model="filtros.criancas" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">ONGs Crianças</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.idosos">
+              <input type="checkbox" v-model="filtros.idosos" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">ONGs Idosos</span>
             </label>
             <label class="checkbox-item">
-              <input type="checkbox" v-model="filtros.moradores_rua">
+              <input type="checkbox" v-model="filtros.moradores_rua" @change="aplicarFiltrosComAnimacao">
               <span class="checkbox-custom"></span>
               <span class="checkbox-text">Moradores de Rua</span>
             </label>
@@ -56,7 +57,7 @@
         </div>
 
         <!-- Botão Aplicar Filtro -->
-        <button class="apply-button" @click="aplicarFiltros">
+        <button class="apply-button" @click="aplicarFiltrosComAnimacao">
           Aplicar Filtro
         </button>
       </div>
@@ -69,6 +70,7 @@
         <div class="search-container">
           <input
             v-model="termoPesquisa"
+            @input="aplicarFiltrosComAnimacao"
             type="text"
             placeholder="Buscar ponto de doação..."
             class="search-input"
@@ -89,21 +91,28 @@
           />
 
           <l-marker
-            v-for="ponto in pontosFiltrados"
+            v-for="ponto in pontosDoacao"
             :key="ponto.id"
             :lat-lng="ponto.coordenadas"
+            :class="{ 'marker-hidden': !pontoVisivel(ponto) }"
           >
             <l-icon
               :icon-size="[24, 24]"
               :icon-anchor="[12, 12]"
               class-name="custom-marker"
             >
-              <div class="marker-circle" :class="getMarkerClass(ponto)">
+              <div
+                class="marker-circle"
+                :class="[
+                  getMarkerClass(ponto),
+                  { 'marker-animating-out': !pontoVisivel(ponto) }
+                ]"
+              >
                 <div class="marker-icon"></div>
               </div>
             </l-icon>
 
-            <l-popup>
+            <l-popup v-if="pontoVisivel(ponto)">
               <div class="popup-content">
                 <h4>{{ ponto.nome }}</h4>
                 <div class="popup-info">
@@ -145,6 +154,9 @@ const filtros = ref({
   idosos: false,
   moradores_rua: false
 })
+
+// Estado para controlar animações
+const pontosAnimando = ref(new Set())
 
 const pontosDoacao = ref([
   // ONGs para Crianças
@@ -440,45 +452,56 @@ const pontosDoacao = ref([
   }
 ])
 
-const pontosFiltrados = computed(() => {
-  return pontosDoacao.value.filter(ponto => {
-    const tipoSelecionado = filtros.value.roupas || filtros.value.alimentos ||
-                           filtros.value.brinquedos || filtros.value.livros
+// Função para verificar se um ponto deve ser visível
+const pontoVisivel = (ponto) => {
+  const tipoSelecionado = filtros.value.roupas || filtros.value.alimentos ||
+                         filtros.value.brinquedos || filtros.value.livros
 
-    if (tipoSelecionado) {
-      const tipoMatch =
-        (filtros.value.roupas && ponto.tipos.includes('roupas')) ||
-        (filtros.value.alimentos && ponto.tipos.includes('alimentos')) ||
-        (filtros.value.brinquedos && ponto.tipos.includes('brinquedos')) ||
-        (filtros.value.livros && ponto.tipos.includes('livros'))
+  if (tipoSelecionado) {
+    const tipoMatch =
+      (filtros.value.roupas && ponto.tipos.includes('roupas')) ||
+      (filtros.value.alimentos && ponto.tipos.includes('alimentos')) ||
+      (filtros.value.brinquedos && ponto.tipos.includes('brinquedos')) ||
+      (filtros.value.livros && ponto.tipos.includes('livros'))
 
-      if (!tipoMatch) return false
-    }
+    if (!tipoMatch) return false
+  }
 
-    const categoriaSelecionada = filtros.value.criancas || filtros.value.idosos ||
-                                 filtros.value.moradores_rua
+  const categoriaSelecionada = filtros.value.criancas || filtros.value.idosos ||
+                               filtros.value.moradores_rua
 
-    if (categoriaSelecionada) {
-      const categoriaMatch =
-        (filtros.value.criancas && ponto.categoria === 'ONGs Crianças') ||
-        (filtros.value.idosos && ponto.categoria === 'ONGs Idosos') ||
-        (filtros.value.moradores_rua && ponto.categoria === 'ONGs Moradores de Rua')
+  if (categoriaSelecionada) {
+    const categoriaMatch =
+      (filtros.value.criancas && ponto.categoria === 'ONGs Crianças') ||
+      (filtros.value.idosos && ponto.categoria === 'ONGs Idosos') ||
+      (filtros.value.moradores_rua && ponto.categoria === 'ONGs Moradores de Rua')
 
-      if (!categoriaMatch) return false
-    }
+    if (!categoriaMatch) return false
+  }
 
-    if (termoPesquisa.value) {
-      const termo = termoPesquisa.value.toLowerCase()
-      return ponto.nome.toLowerCase().includes(termo) ||
-             ponto.endereco.toLowerCase().includes(termo)
-    }
+  if (termoPesquisa.value) {
+    const termo = termoPesquisa.value.toLowerCase()
+    return ponto.nome.toLowerCase().includes(termo) ||
+           ponto.endereco.toLowerCase().includes(termo)
+  }
 
-    return true
-  })
-})
+  return true
+}
 
-const aplicarFiltros = () => {
+const aplicarFiltrosComAnimacao = () => {
   console.log('Filtros aplicados:', filtros.value)
+
+  // Primeiro identifica os pontos que vão sair
+  pontosDoacao.value.forEach(ponto => {
+    if (!pontoVisivel(ponto)) {
+      pontosAnimando.value.add(ponto.id)
+    }
+  })
+
+  // Remove os pontos da animação após o tempo da transição
+  setTimeout(() => {
+    pontosAnimando.value.clear()
+  }, 400)
 }
 
 const abrirRota = (coordenadas) => {
@@ -492,13 +515,6 @@ const getMarkerClass = (ponto) => {
   if (ponto.categoria.includes('Idosos')) return 'marker-idosos'
   if (ponto.categoria.includes('Moradores de Rua')) return 'marker-moradores-rua'
   return 'marker-default'
-}
-
-const getMarkerIcon = (ponto) => {
-  if (ponto.categoria.includes('Crianças')) return '👶'
-  if (ponto.categoria.includes('Idosos')) return '👴'
-  if (ponto.categoria.includes('Moradores de Rua')) return '🏠'
-  return '❤'
 }
 
 const formatarTipos = (tipos) => {
@@ -601,27 +617,59 @@ body {
   width: 16px;
   height: 16px;
   border: 2px solid #cbd5e0;
-  border-radius: 3px;
+  border-radius: 4px;
   margin-right: 10px;
   position: relative;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .checkbox-item input[type="checkbox"]:checked + .checkbox-custom {
   background: #3182ce;
   border-color: #3182ce;
+  transform: scale(1.05);
 }
 
-.checkbox-item input[type="checkbox"]:checked + .checkbox-custom::after {
+.checkbox-item input[type="checkbox"]:focus + .checkbox-custom {
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.checkbox-item:hover input[type="checkbox"]:not(:checked) + .checkbox-custom {
+  border-color: #a0aec0;
+  background: #f7fafc;
+}
+
+.checkbox-custom::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #3182ce;
+  transform: scale(0);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 2px;
+}
+
+.checkbox-item input[type="checkbox"]:checked + .checkbox-custom::before {
+  transform: scale(1);
+}
+
+.checkbox-custom::after {
   content: '';
   position: absolute;
   left: 4px;
-  top: 1px;
+  top: 0px;
   width: 4px;
-  height: 8px;
+  height: 9px;
   border: solid white;
   border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transform-origin: center;
+}
+
+.checkbox-item input[type="checkbox"]:checked + .checkbox-custom::after {
+  transform: rotate(45deg) scale(1);
+  transition-delay: 0.05s;
 }
 
 .checkbox-text {
@@ -697,14 +745,39 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  transition: all 0.2s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid white;
   position: relative;
+  transform: scale(1);
+  opacity: 1;
 }
 
 .marker-circle:hover {
   transform: scale(1.15);
   box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+/* Animação de saída para marcadores que não passam no filtro */
+.marker-animating-out {
+  transform: scale(0) !important;
+  opacity: 0 !important;
+  transition: all 0.4s cubic-bezier(0.6, 0, 0.4, 1) !important;
+}
+
+/* Animação de entrada mais suave */
+.marker-circle:not(.marker-animating-out) {
+  animation: markerFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes markerFadeIn {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .marker-circle::before {
@@ -718,6 +791,11 @@ body {
   animation: ripple 2.5s infinite;
   top: -6px;
   left: -6px;
+}
+
+.marker-animating-out::before {
+  animation: none !important;
+  opacity: 0 !important;
 }
 
 @keyframes ripple {
@@ -815,6 +893,11 @@ body {
 .route-button:hover {
   background: #2c5aa0;
   transform: translateY(-1px);
+}
+
+/* Esconder marcadores completamente quando necessário */
+.marker-hidden {
+  display: none !important;
 }
 
 @media (max-width: 768px) {
