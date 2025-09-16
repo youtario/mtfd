@@ -1,4 +1,3 @@
-
 <template>
   <div class="app-layout">
     <!-- Sidebar -->
@@ -56,10 +55,32 @@
           </div>
         </div>
 
-        <!-- Botão Aplicar Filtro -->
-        <button class="apply-button" @click="aplicarFiltrosComAnimacao">
-          Aplicar Filtro
-        </button>
+        <!-- Filtro por Horários -->
+        <div class="filter-group">
+          <h3 class="filter-label">FILTRAR POR HORÁRIO</h3>
+          <div class="checkbox-list">
+            <label class="checkbox-item">
+              <input type="checkbox" v-model="filtros.abertoAgora" @change="aplicarFiltrosComAnimacao">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Aberto Agora</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" v-model="filtros.aberto24h" @change="aplicarFiltrosComAnimacao">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">24 Horas</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" v-model="filtros.horarioComercial" @change="aplicarFiltrosComAnimacao">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Horário Comercial (8h-18h)</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" v-model="filtros.periodoTarde" @change="aplicarFiltrosComAnimacao">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Período da Tarde</span>
+            </label>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -152,7 +173,11 @@ const filtros = ref({
   livros: false,
   criancas: false,
   idosos: false,
-  moradores_rua: false
+  moradores_rua: false,
+  abertoAgora: false,
+  aberto24h: false,
+  horarioComercial: false,
+  periodoTarde: false
 })
 
 // Estado para controlar animações
@@ -452,8 +477,75 @@ const pontosDoacao = ref([
   }
 ])
 
+// Função para obter horário atual (simulado para demonstração)
+const obterHorarioAtual = () => {
+  const agora = new Date()
+  const hora = agora.getHours()
+  const minutos = agora.getMinutes()
+  return { hora, minutos }
+}
+
+// Função para verificar se está aberto agora
+const estaAbertoAgora = (horario) => {
+  if (horario.includes('24H') || horario.includes('Aberto 24H')) {
+    return true
+  }
+
+  const { hora: horaAtual } = obterHorarioAtual()
+
+  // Regex para extrair horários no formato HH:MM - HH:MM
+  const regex = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/
+  const match = horario.match(regex)
+
+  if (match) {
+    const horaInicio = parseInt(match[1])
+    const horaFim = parseInt(match[3])
+
+    return horaAtual >= horaInicio && horaAtual <= horaFim
+  }
+
+  return false
+}
+
+// Função para verificar se é 24h
+const eh24Horas = (horario) => {
+  return horario.includes('24H') || horario.includes('Aberto 24H')
+}
+
+// Função para verificar se é horário comercial (8h-18h)
+const ehHorarioComercial = (horario) => {
+  const regex = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/
+  const match = horario.match(regex)
+
+  if (match) {
+    const horaInicio = parseInt(match[1])
+    const horaFim = parseInt(match[3])
+
+    return horaInicio >= 8 && horaFim <= 18
+  }
+
+  return false
+}
+
+// Função para verificar se funciona no período da tarde
+const ehPeriodoTarde = (horario) => {
+  const regex = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/
+  const match = horario.match(regex)
+
+  if (match) {
+    const horaInicio = parseInt(match[1])
+    const horaFim = parseInt(match[3])
+
+    // Considera período da tarde se funciona das 13h às 18h ou similar
+    return horaInicio >= 12 && horaFim >= 17
+  }
+
+  return false
+}
+
 // Função para verificar se um ponto deve ser visível
 const pontoVisivel = (ponto) => {
+  // Filtros de tipo de doação
   const tipoSelecionado = filtros.value.roupas || filtros.value.alimentos ||
                          filtros.value.brinquedos || filtros.value.livros
 
@@ -467,6 +559,7 @@ const pontoVisivel = (ponto) => {
     if (!tipoMatch) return false
   }
 
+  // Filtros de categoria
   const categoriaSelecionada = filtros.value.criancas || filtros.value.idosos ||
                                filtros.value.moradores_rua
 
@@ -479,6 +572,21 @@ const pontoVisivel = (ponto) => {
     if (!categoriaMatch) return false
   }
 
+  // Filtros de horário
+  const horarioSelecionado = filtros.value.abertoAgora || filtros.value.aberto24h ||
+                             filtros.value.horarioComercial || filtros.value.periodoTarde
+
+  if (horarioSelecionado) {
+    const horarioMatch =
+      (filtros.value.abertoAgora && estaAbertoAgora(ponto.horario)) ||
+      (filtros.value.aberto24h && eh24Horas(ponto.horario)) ||
+      (filtros.value.horarioComercial && ehHorarioComercial(ponto.horario)) ||
+      (filtros.value.periodoTarde && ehPeriodoTarde(ponto.horario))
+
+    if (!horarioMatch) return false
+  }
+
+  // Filtro de pesquisa por texto
   if (termoPesquisa.value) {
     const termo = termoPesquisa.value.toLowerCase()
     return ponto.nome.toLowerCase().includes(termo) ||
@@ -675,25 +783,6 @@ body {
 .checkbox-text {
   user-select: none;
   line-height: 1.4;
-}
-
-.apply-button {
-  width: 100%;
-  background: #3182ce;
-  color: white;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 16px;
-}
-
-.apply-button:hover {
-  background: #2c5aa0;
-  transform: translateY(-1px);
 }
 
 .map-area {
